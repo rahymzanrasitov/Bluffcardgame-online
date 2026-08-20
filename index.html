@@ -1,0 +1,567 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Верю Не Верю — Мобильная Версия</title>
+    <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Fredoka+One&display=swap');
+
+        body {
+            margin: 0;
+            padding: 0;
+            background: #2b1d38;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            font-family: 'Fredoka One', 'Arial Black', sans-serif;
+            color: white;
+            overflow: hidden;
+            user-select: none;
+            touch-action: manipulation;
+        }
+
+        #lobby {
+            background: #4a2e68;
+            padding: 20px;
+            border-radius: 24px;
+            border: 5px solid #ffcb05;
+            box-shadow: 0 8px 0 #2a163d, 0 15px 25px rgba(0,0,0,0.5);
+            text-align: center;
+            width: 85%;
+            max-width: 320px;
+            box-sizing: border-box;
+        }
+
+        h2 {
+            margin: 0 0 15px 0;
+            color: #ffcb05;
+            text-shadow: 2px 2px 0 #000;
+            font-size: 24px;
+        }
+
+        input {
+            padding: 12px;
+            margin: 6px 0;
+            width: 100%;
+            border-radius: 12px;
+            border: 3px solid #222;
+            font-size: 16px;
+            font-family: inherit;
+            outline: none;
+            text-align: center;
+            box-sizing: border-box;
+        }
+
+        button {
+            padding: 12px 15px;
+            margin: 6px 0;
+            width: 100%;
+            border-radius: 16px;
+            border: 3px solid #000;
+            font-size: 16px;
+            font-family: inherit;
+            cursor: pointer;
+            color: white;
+            text-shadow: 2px 2px 0 #000;
+            transition: transform 0.1s;
+        }
+
+        .btn-green { background: linear-gradient(180deg, #2ed573 0%, #26af5f 100%); box-shadow: 0 5px 0 #1e8449; }
+        .btn-blue { background: linear-gradient(180deg, #1e90ff 0%, #0066cc 100%); box-shadow: 0 5px 0 #004080; }
+        .btn-purple { background: linear-gradient(180deg, #9b59b6 0%, #8e44ad 100%); box-shadow: 0 5px 0 #5b2c6f; }
+        .btn-yellow { background: linear-gradient(180deg, #ffcb05 0%, #e6b800 100%); box-shadow: 0 5px 0 #b38f00; color: #000; text-shadow: none; }
+
+        button:active {
+            transform: translateY(3px);
+            box-shadow: 0 2px 0 #000 !important;
+        }
+
+        canvas {
+            border: 6px solid #ffcb05;
+            border-radius: 24px;
+            box-shadow: 0 10px 0 #1a4325, 0 15px 25px rgba(0,0,0,0.6);
+            display: none;
+            max-width: 95vw;
+            max-height: 92vh;
+            aspect-ratio: 5 / 9;
+        }
+
+        #copyBtn {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+
+<div id="lobby">
+    <h2>ВЕРЮ НЕ ВЕРЮ!</h2>
+    <input type="text" id="nickname" placeholder="Твой Ник" value="Игрок 1">
+    
+    <button id="passPlayBtn" class="btn-purple">ИГРА С САМИМ СОБОЙ</button>
+    <hr style="border-color: #6a428b; margin: 10px 0;">
+    
+    <button id="createBtn" class="btn-green">СОЗДАТЬ ОНЛАЙН</button>
+    <button id="copyBtn" class="btn-yellow">СКОПИРОВАТЬ ID</button>
+    
+    <div style="margin-top: 5px;">
+        <input type="text" id="joinId" placeholder="ID Комнаты">
+        <button id="joinBtn" class="btn-blue">ВОЙТИ ПО ID</button>
+    </div>
+    <p id="statusText" style="color: #ffcb05; font-size: 13px; margin-top: 10px; text-shadow: 1px 1px 0 #000; word-break: break-all;"></p>
+</div>
+
+<canvas id="gameCanvas" width="500" height="900"></canvas>
+
+<script>
+const diceSvgData = {
+    1: 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect x="5" y="5" width="90" height="90" rx="20" fill="%23e60000" stroke="%23000" stroke-width="6"/><circle cx="50" cy="50" r="10" fill="%23fff" stroke="%23000" stroke-width="2"/></svg>',
+    2: 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect x="5" y="5" width="90" height="90" rx="20" fill="%23e60000" stroke="%23000" stroke-width="6"/><circle cx="30" cy="30" r="10" fill="%23fff" stroke="%23000" stroke-width="2"/><circle cx="70" cy="70" r="10" fill="%23fff" stroke="%23000" stroke-width="2"/></svg>',
+    3: 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect x="5" y="5" width="90" height="90" rx="20" fill="%23e60000" stroke="%23000" stroke-width="6"/><circle cx="25" cy="25" r="10" fill="%23fff" stroke="%23000" stroke-width="2"/><circle cx="50" cy="50" r="10" fill="%23fff" stroke="%23000" stroke-width="2"/><circle cx="75" cy="75" r="10" fill="%23fff" stroke="%23000" stroke-width="2"/></svg>',
+    4: 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect x="5" y="5" width="90" height="90" rx="20" fill="%23e60000" stroke="%23000" stroke-width="6"/><circle cx="30" cy="30" r="10" fill="%23fff" stroke="%23000" stroke-width="2"/><circle cx="70" cy="30" r="10" fill="%23fff" stroke="%23000" stroke-width="2"/><circle cx="30" cy="70" r="10" fill="%23fff" stroke="%23000" stroke-width="2"/><circle cx="70" cy="70" r="10" fill="%23fff" stroke="%23000" stroke-width="2"/></svg>',
+    5: 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect x="5" y="5" width="90" height="90" rx="20" fill="%23e60000" stroke="%23000" stroke-width="6"/><circle cx="25" cy="25" r="9" fill="%23fff" stroke="%23000" stroke-width="2"/><circle cx="75" cy="25" r="9" fill="%23fff" stroke="%23000" stroke-width="2"/><circle cx="50" cy="50" r="9" fill="%23fff" stroke="%23000" stroke-width="2"/><circle cx="25" cy="75" r="9" fill="%23fff" stroke="%23000" stroke-width="2"/><circle cx="75" cy="75" r="9" fill="%23fff" stroke="%23000" stroke-width="2"/></svg>',
+    6: 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect x="5" y="5" width="90" height="90" rx="20" fill="%23e60000" stroke="%23000" stroke-width="6"/><circle cx="30" cy="25" r="9" fill="%23fff" stroke="%23000" stroke-width="2"/><circle cx="70" cy="25" r="9" fill="%23fff" stroke="%23000" stroke-width="2"/><circle cx="30" cy="50" r="9" fill="%23fff" stroke="%23000" stroke-width="2"/><circle cx="70" cy="50" r="9" fill="%23fff" stroke="%23000" stroke-width="2"/><circle cx="30" cy="75" r="9" fill="%23fff" stroke="%23000" stroke-width="2"/><circle cx="70" cy="75" r="9" fill="%23fff" stroke="%23000" stroke-width="2"/></svg>'
+};
+
+const diceImages = {};
+for (let key in diceSvgData) {
+    diceImages[key] = new Image();
+    diceImages[key].src = diceSvgData[key];
+}
+
+let peer = null;
+let conn = null;
+let isHost = false;
+let myRole = 1;
+let isLocalPassAndPlay = false;
+let currentRoomId = '';
+
+const lobby = document.getElementById('lobby');
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+const statusText = document.getElementById('statusText');
+const copyBtn = document.getElementById('copyBtn');
+
+const state = {
+    p1Name: 'Игрок 1',
+    p2Name: 'Игрок 2',
+    p1Balance: 1000,
+    p2Balance: 1000,
+    p1Bet: 100,
+    p2Bet: 100,
+    p1Dice: 1,
+    p2Dice: 2,
+    centerDice: [1, 1, 2],
+    isCovered: true,
+    roundOver: false,
+    gameOver: false,
+    isRestarting: false,
+    countdown: 0,
+    currentTurn: 1,
+    message: "Ходит Игрок 1"
+};
+
+document.getElementById('passPlayBtn').addEventListener('click', () => {
+    state.p1Name = document.getElementById('nickname').value.trim() || 'Игрок 1';
+    state.p2Name = 'Игрок 2';
+    isLocalPassAndPlay = true;
+    isHost = true;
+    lobby.style.display = 'none';
+    canvas.style.display = 'block';
+    rollDice();
+    render();
+});
+
+document.getElementById('createBtn').addEventListener('click', () => {
+    state.p1Name = document.getElementById('nickname').value.trim() || 'Игрок 1';
+    isLocalPassAndPlay = false;
+    isHost = true;
+    myRole = 1;
+    peer = new Peer();
+    
+    peer.on('open', (id) => { 
+        currentRoomId = id;
+        statusText.innerText = `ID: ${id}`; 
+        copyBtn.style.display = 'block';
+    });
+    peer.on('connection', (c) => { conn = c; setupConnection(); });
+});
+
+copyBtn.addEventListener('click', () => {
+    if (currentRoomId) {
+        navigator.clipboard.writeText(currentRoomId).then(() => {
+            const originalText = copyBtn.innerText;
+            copyBtn.innerText = 'СКОПИРОВАНО!';
+            setTimeout(() => {
+                copyBtn.innerText = originalText;
+            }, 2000);
+        }).catch(err => {
+            console.error('Ошибка копирования: ', err);
+        });
+    }
+});
+
+document.getElementById('joinBtn').addEventListener('click', () => {
+    state.p2Name = document.getElementById('nickname').value.trim() || 'Игрок 2';
+    const joinId = document.getElementById('joinId').value.trim();
+    if (!joinId) return;
+
+    isLocalPassAndPlay = false;
+    isHost = false;
+    myRole = 2;
+    peer = new Peer();
+
+    peer.on('open', () => {
+        conn = peer.connect(joinId);
+        setupConnection();
+    });
+});
+
+function setupConnection() {
+    conn.on('open', () => {
+        lobby.style.display = 'none';
+        canvas.style.display = 'block';
+
+        if (isHost) {
+            rollDice();
+            syncState();
+        } else {
+            conn.send({ type: 'JOIN_NAME', name: state.p2Name });
+        }
+    });
+
+    conn.on('data', (data) => {
+        if (data.type === 'SYNC') {
+            Object.assign(state, data.state);
+            render();
+        } else if (data.type === 'JOIN_NAME' && isHost) {
+            state.p2Name = data.name;
+            syncState();
+            render();
+        } else if (data.type === 'ACTION' && isHost) {
+            if (data.action === 'bet' && data.player === state.currentTurn) {
+                if (data.player === 1) state.p1Bet = data.value;
+                if (data.player === 2) state.p2Bet = data.value;
+            }
+            if (data.action === 'guess' && data.player === state.currentTurn) checkWin(data.player, data.choice);
+            if (data.action === 'start_delay' && state.roundOver && !state.isRestarting && !state.gameOver) triggerDelayRestart();
+            syncState();
+            render();
+        }
+    });
+}
+
+function syncState() {
+    if (isHost && conn && !isLocalPassAndPlay) conn.send({ type: 'SYNC', state: state });
+}
+
+function sendAction(actionData) {
+    if (isHost) {
+        if (actionData.action === 'bet' && actionData.player === state.currentTurn) {
+            if (actionData.player === 1) state.p1Bet = actionData.value;
+            if (actionData.player === 2) state.p2Bet = actionData.value;
+        }
+        if (actionData.action === 'guess' && actionData.player === state.currentTurn) checkWin(actionData.player, actionData.choice);
+        if (actionData.action === 'start_delay' && state.roundOver && !state.isRestarting && !state.gameOver) triggerDelayRestart();
+        syncState();
+        render();
+    } else if (conn) {
+        conn.send({ type: 'ACTION', ...actionData });
+    }
+}
+
+function triggerDelayRestart() {
+    state.isRestarting = true;
+    state.countdown = 5;
+    syncState();
+    render();
+
+    const timer = setInterval(() => {
+        state.countdown--;
+        if (state.countdown <= 0) {
+            clearInterval(timer);
+            rollDice();
+        }
+        syncState();
+        render();
+    }, 1000);
+}
+
+function rollDice() {
+    state.p1Dice = Math.floor(Math.random() * 6) + 1;
+    state.p2Dice = Math.floor(Math.random() * 6) + 1;
+    state.centerDice = [
+        Math.floor(Math.random() * 6) + 1,
+        Math.floor(Math.random() * 6) + 1,
+        Math.floor(Math.random() * 6) + 1
+    ];
+    state.isCovered = true;
+    state.roundOver = false;
+    state.isRestarting = false;
+    
+    if (state.currentTurn === undefined) {
+        state.currentTurn = 1;
+    } else {
+        state.currentTurn = state.currentTurn === 1 ? 2 : 1;
+    }
+
+    const activeName = state.currentTurn === 1 ? state.p1Name : state.p2Name;
+    state.message = `Ход игрока: ${activeName}`;
+}
+
+function checkWin(player, choice) {
+    state.isCovered = false;
+    const playerDice = player === 1 ? state.p1Dice : state.p2Dice;
+    const bet = player === 1 ? state.p1Bet : state.p2Bet;
+
+    const sorted = [...state.centerDice].sort((a, b) => a - b);
+    const allThreeSame = (sorted[0] === sorted[1]) && (sorted[1] === sorted[2]);
+    const hasMatch = state.centerDice.includes(playerDice);
+    const conditionMet = allThreeSame || hasMatch;
+
+    const isWin = (choice === 'believe' && conditionMet) || (choice === 'disbelieve' && !conditionMet);
+    const name = player === 1 ? state.p1Name : state.p2Name;
+
+    if (isWin) {
+        state.message = `🎉 ${name} УГАДАЛ! (+${bet})`;
+        if (player === 1) { state.p1Balance += bet; state.p2Balance -= bet; }
+        else { state.p2Balance += bet; state.p1Balance -= bet; }
+    } else {
+        state.message = `💥 ${name} ОШИБСЯ! (-${bet})`;
+        if (player === 1) { state.p1Balance -= bet; state.p2Balance += bet; }
+        else { state.p2Balance -= bet; state.p1Balance += bet; }
+    }
+
+    if (state.p1Balance <= 0) {
+        state.p1Balance = 0;
+        state.message = `💀 ${state.p1Name} ПРОИГРАЛ!`;
+        state.gameOver = true;
+    } else if (state.p2Balance <= 0) {
+        state.p2Balance = 0;
+        state.message = `💀 ${state.p2Name} ПРОИГРАЛ!`;
+        state.gameOver = true;
+    }
+
+    if (state.p1Bet > state.p1Balance) state.p1Bet = Math.max(100, state.p1Balance);
+    if (state.p2Bet > state.p2Balance) state.p2Bet = Math.max(100, state.p2Balance);
+
+    state.roundOver = true;
+}
+
+function drawRedDie(x, y, size, value, angle = 0) {
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate(angle);
+
+    const img = diceImages[value];
+    if (img && img.complete) {
+        ctx.drawImage(img, -size / 2, -size / 2, size, size);
+    } else {
+        ctx.fillStyle = '#e60000';
+        ctx.fillRect(-size / 2, -size / 2, size, size);
+    }
+
+    ctx.restore();
+}
+
+function drawButton(x, y, w, h, text, bgColor, shadowColor, fontSize = 20) {
+    ctx.save();
+    ctx.fillStyle = shadowColor;
+    ctx.beginPath();
+    ctx.roundRect(x, y + 6, w, h, 16);
+    ctx.fill();
+
+    ctx.fillStyle = bgColor;
+    ctx.strokeStyle = '#000000';
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    ctx.roundRect(x, y, w, h, 16);
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.fillStyle = '#ffffff';
+    ctx.font = `bold ${fontSize}px "Fredoka One", Arial`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.shadowColor = '#000';
+    ctx.shadowBlur = 2;
+    ctx.fillText(text, x + w / 2, y + h / 2);
+    ctx.restore();
+}
+
+function render() {
+    ctx.fillStyle = '#26af5f';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    ctx.strokeStyle = '#1e8449';
+    ctx.lineWidth = 10;
+    ctx.strokeRect(8, 8, canvas.width - 16, canvas.height - 16);
+
+    // --- ИГРОК 2 (Вверху) ---
+    ctx.save();
+    ctx.translate(canvas.width / 2, 110);
+    ctx.rotate(Math.PI);
+    ctx.fillStyle = state.currentTurn === 2 && !state.roundOver ? '#ffeb3b' : '#ffcb05';
+    ctx.font = '22px "Fredoka One", Arial';
+    ctx.textAlign = 'center';
+    ctx.shadowColor = '#000';
+    ctx.shadowBlur = 4;
+    ctx.fillText(`${state.p2Name}: $${state.p2Balance}${state.currentTurn === 2 && !state.roundOver ? ' (ХОД)' : ''}`, 0, 0);
+    ctx.font = '42px "Fredoka One", Arial';
+    ctx.fillText(`-   ${state.p2Bet}   +`, 0, -45);
+    ctx.restore();
+
+    // --- ИГРОК 1 (Внизу) ---
+    ctx.fillStyle = state.currentTurn === 1 && !state.roundOver ? '#ffeb3b' : '#ffcb05';
+    ctx.font = '22px "Fredoka One", Arial';
+    ctx.textAlign = 'center';
+    ctx.shadowColor = '#000';
+    ctx.shadowBlur = 4;
+    ctx.fillText(`${state.p1Name}: $${state.p1Balance}${state.currentTurn === 1 && !state.roundOver ? ' (ХОД)' : ''}`, 250, 735);
+    ctx.font = '42px "Fredoka One", Arial';
+    ctx.fillText(`-   ${state.p1Bet}   +`, 250, 780);
+
+    // --- ПО БОКАМ ЦЕНТРАЛЬНОГО ПОЛЯ (Кости игроков) ---
+    drawRedDie(70, 415, 70, state.p1Dice, 0);
+    drawRedDie(430, 415, 70, state.p2Dice, 0);
+
+    // --- ЦЕНТРАЛЬНАЯ ЗОНА ---
+    if (state.isCovered) {
+        ctx.save();
+        ctx.fillStyle = '#000';
+        ctx.beginPath();
+        ctx.roundRect(165, 335, 170, 170, 20);
+        ctx.fill();
+
+        ctx.fillStyle = '#2c3e50';
+        ctx.strokeStyle = '#000';
+        ctx.lineWidth = 5;
+        ctx.beginPath();
+        ctx.roundRect(160, 330, 170, 170, 20);
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.fillStyle = '#ffcb05';
+        ctx.font = 'bold 90px "Fredoka One", Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText('?', 245, 445);
+        ctx.restore();
+    } else {
+        drawRedDie(190, 380, 65, state.centerDice[0], -0.2);
+        drawRedDie(310, 380, 65, state.centerDice[1], 0.25);
+        drawRedDie(250, 450, 65, state.centerDice[2], -0.05);
+    }
+
+    // --- КНОПКИ И НАДПИСИ РЕЗУЛЬТАТОВ ---
+    if (!state.roundOver) {
+        // Кнопки Игрока 1 (Снизу)
+        if ((isLocalPassAndPlay || myRole === 1) && state.currentTurn === 1) {
+            drawButton(60, 640, 170, 55, "ВЕРЮ", "#2ed573", "#1e8449", 22);
+            drawButton(270, 640, 170, 55, "НЕ ВЕРЮ", "#ff4757", "#b12a37", 22);
+        }
+        // Кнопки Игрока 2 (Сверху)
+        if ((isLocalPassAndPlay || myRole === 2) && state.currentTurn === 2) {
+            ctx.save();
+            ctx.translate(500, 260);
+            ctx.rotate(Math.PI);
+            drawButton(60, 0, 170, 55, "ВЕРЮ", "#2ed573", "#1e8449", 22);
+            drawButton(270, 0, 170, 55, "НЕ ВЕРЮ", "#ff4757", "#b12a37", 22);
+            ctx.restore();
+        }
+    } else {
+        // НАДПИСЬ ДЛЯ ИГРОКА 1 (Чуть выше кнопок)
+        ctx.save();
+        ctx.fillStyle = '#ffcb05';
+        ctx.font = '22px "Fredoka One", Arial';
+        ctx.textAlign = 'center';
+        ctx.shadowColor = '#000';
+        ctx.shadowBlur = 4;
+        ctx.fillText(state.message, canvas.width / 2, 615);
+        ctx.restore();
+
+        // НАДПИСЬ ДЛЯ ИГРОКА 2 (Чуть ниже и перевернута)
+        ctx.save();
+        ctx.translate(canvas.width / 2, 285);
+        ctx.rotate(Math.PI);
+        ctx.fillStyle = '#ffcb05';
+        ctx.font = '22px "Fredoka One", Arial';
+        ctx.textAlign = 'center';
+        ctx.shadowColor = '#000';
+        ctx.shadowBlur = 4;
+        ctx.fillText(state.message, 0, 0);
+        ctx.restore();
+
+        // Кнопка продолжения / Перезапуска
+        if (state.gameOver) {
+            drawButton(canvas.width / 2 - 120, 640, 240, 50, "ИГРА ОКОНЧЕНА", "#e74c3c", "#c0392b", 18);
+        } else if (state.isRestarting) {
+            drawButton(canvas.width / 2 - 140, 640, 280, 50, `СТАРТ ЧЕРЕЗ ${state.countdown} СЕК...`, "#7f8c8d", "#2c3e50", 18);
+        } else {
+            drawButton(canvas.width / 2 - 120, 640, 240, 50, "СЛЕДУЮЩИЙ РАУНД", "#1e90ff", "#004080", 18);
+        }
+    }
+}
+
+function handleTouchOrClick(e) {
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+
+    let clientX = e.clientX;
+    let clientY = e.clientY;
+
+    if (e.touches && e.touches.length > 0) {
+        clientX = e.touches[0].clientX;
+        clientY = e.touches[0].clientY;
+    }
+
+    const x = (clientX - rect.left) * scaleX;
+    const y = (clientY - rect.top) * scaleY;
+
+    if (state.roundOver) {
+        if (!state.gameOver && !state.isRestarting && x >= canvas.width / 2 - 140 && x <= canvas.width / 2 + 140 && y >= 640 && y <= 690) {
+            sendAction({ action: 'start_delay' });
+        }
+        return;
+    }
+
+    // Клики Игрока 1 (Снизу)
+    if ((isLocalPassAndPlay || myRole === 1) && state.currentTurn === 1) {
+        if (y > 740 && y < 795) {
+            if (x > 120 && x < 200 && state.p1Bet > 100) sendAction({ action: 'bet', player: 1, value: state.p1Bet - 100 });
+            if (x > 300 && x < 380 && state.p1Bet < state.p1Balance) sendAction({ action: 'bet', player: 1, value: state.p1Bet + 100 });
+        }
+        if (y >= 640 && y <= 695) {
+            if (x >= 60 && x <= 230) sendAction({ action: 'guess', player: 1, choice: 'believe' });
+            if (x >= 270 && x <= 440) sendAction({ action: 'guess', player: 1, choice: 'disbelieve' });
+        }
+    }
+
+    // Клики Игрока 2 (Сверху)
+    if ((isLocalPassAndPlay || myRole === 2) && state.currentTurn === 2) {
+        if (y > 135 && y < 190) {
+            if (x > 300 && x < 380 && state.p2Bet > 100) sendAction({ action: 'bet', player: 2, value: state.p2Bet - 100 });
+            if (x > 120 && x < 200 && state.p2Bet < state.p2Balance) sendAction({ action: 'bet', player: 2, value: state.p2Bet + 100 });
+        }
+        if (y >= 205 && y <= 260) {
+            if (x >= 270 && x <= 440) sendAction({ action: 'guess', player: 2, choice: 'believe' });
+            if (x >= 60 && x <= 230) sendAction({ action: 'guess', player: 2, choice: 'disbelieve' });
+        }
+    }
+}
+
+canvas.addEventListener('touchstart', (e) => {
+    e.preventDefault();
+    handleTouchOrClick(e);
+}, { passive: false });
+
+canvas.addEventListener('mousedown', (e) => {
+    handleTouchOrClick(e);
+});
+</script>
+
+</body>
+</html>
